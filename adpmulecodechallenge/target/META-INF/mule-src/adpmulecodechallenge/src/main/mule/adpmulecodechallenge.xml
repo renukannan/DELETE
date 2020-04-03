@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="adpmulecodechallengeFlow" doc:id="a042258e-7a95-46a5-9b24-7109ff44c81a" >
+		<http:listener doc:name="Listener" doc:id="87cc7906-3ef4-4e09-af62-fd1ba9d8e95b" config-ref="HTTP_Listener_config" path="/CreateProfile">
+			<http:response statusCode="201" />
+		</http:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="5cd97b11-c29d-4862-be21-1a90ae41bb96" message="#[payload]"/>
+		<ee:transform doc:name="Transform Message" doc:id="e6e5c119-235b-4575-a130-fee4f3b970ce" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+lookup('flow2', payload)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="flow2" doc:id="61caf59f-966d-4490-a468-f8c03d8b396e" >
+		<set-payload value="#[payload.employee.first_name ++ ' ' ++ payload.employee.last_name ++ ' profile is created in HRMS System.']" doc:name="Set Payload" doc:id="1f9b21d4-9f3a-4684-b629-da715e955a4f"/>
+	</flow>
+	<flow name="flow3" doc:id="46f57432-679e-4c67-8a11-aa35aebbe970" >
+		<http:listener doc:name="Listener" doc:id="c97e83c7-9a8f-48a4-9ea1-06f77c6255ba" config-ref="HTTP_Listener_config" path="/ConvertCamelCase"/>
+		<logger level="INFO" doc:name="Logger" doc:id="3ad50b94-c640-43ae-ba27-e369c1bb2576" message="#['Input String :' ++ attributes.queryParams.string]"/>
+		<set-variable value="#[attributes.queryParams.string]" doc:name="Set Variable" doc:id="7968191f-eb53-43ea-8296-d59162e8010f" variableName="inputString"/>
+		<ee:transform doc:name="Transform Message" doc:id="a8794542-ac45-4eb1-98bc-3303b1cd4886" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	a: java!utils::MyUtils::toCamelCase(vars.inputString)
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="adpmulecodechallengeFlow1" doc:id="4417e9d8-6429-434f-a280-b45412b78537" >
+		<http:listener doc:name="Listener" doc:id="b709fa01-cd64-4c48-8d24-79ee88316064" config-ref="HTTP_Listener_config" path="/MatchById"/>
+		<set-payload value='#[{"employee":[{"id":"A007","first_name":"Jan","last_name":"Doe"},{"id":"A008","first_name":"Ron","l
+ast_name":"David"},{"id":"A009","first_name":"Jane","last_name":"Kane"},{"id":"A010","first_name":
+"Marsh","last_name":"Megan"},{"id":"A011","first_name":"Kelly","last_name":"Mitch"},{"id":"A012",
+"first_name":"Chris","last_name":"Vaste"}]}]' doc:name="input1 JSON" doc:id="fc777b7a-a90f-4e2e-81e7-37ef65c488e3"/>
+		<set-variable value="#[payload]" doc:name="Save Input1" doc:id="55a09e5f-5ff4-463f-929c-8ab29fc49002" variableName="input1"/>
+		<set-payload value='#[{
+	"scoreBoard": [{
+		"id": "A007",
+		"subjects": ["Maths", "English", "Arts", "Drawimgs"],
+		"score": [80, 75, 89, 100]
+	}, {
+		"id": "A008",
+		"subjects": ["Maths", "English", "Arts", "Drawimgs"],
+		"score": [70, 85, 69, 90]
+	}, {
+		"id": "A021 ",
+		"subjects ": ["Maths ", "English ", "Arts ", "Drawimgs "],
+		"score ": [90, 87, 77, 95]
+	}]
+}]' doc:name="input2 JSON" doc:id="ded0f1be-e35a-402f-8ab2-7b6650993819"/>
+		<set-variable value="#[payload]" doc:name="save Input2" doc:id="316a3494-a7fe-4c5b-a9dc-36a41ba4694c" variableName="input2"/>
+		<ee:transform doc:name="Transform Message" doc:id="ca052cb9-61fc-41b5-a5d2-9a675b10993a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"certificate" :
+vars.input1.employee map (input1Value) ->
+  {
+   	(vars.input2.scoreBoard filter ($.*id contains input1Value.id ) map (input2Value) -> {
+   	 
+   	 		"id":input2Value.id
+   	 })
+   	
+  }]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
